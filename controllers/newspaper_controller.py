@@ -89,3 +89,13 @@ def can_download(db: Session, newspaper_id: int, user: User) -> Newspaper:
     if not purchase:
         raise HTTPException(403, "É necessária uma compra paga para descarregar este jornal.")
     return newspaper
+
+
+def list_user_purchases(db: Session, user: User) -> list[NewspaperPurchase]:
+    return list(
+        db.scalars(
+            select(NewspaperPurchase)
+            .where(NewspaperPurchase.user_id == user.id)
+            .order_by(NewspaperPurchase.created_at.desc())
+        )
+    )

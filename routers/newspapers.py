@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from controllers.newspaper_controller import (
     can_download,
     create_newspaper,
+    list_user_purchases,
     purchase_newspaper,
     save_pdf,
     update_purchase_status,
@@ -25,6 +26,14 @@ router = APIRouter(prefix="/newspapers", tags=["Jornais digitais"])
 @router.get("", response_model=list[NewspaperOut])
 def list_newspapers(db: Session = Depends(get_db)):
     return list(db.scalars(select(Newspaper).where(Newspaper.is_published.is_(True)).order_by(Newspaper.published_at.desc())))
+
+
+@router.get("/my-purchases", response_model=list[PurchaseOut])
+def my_purchases(
+    db: Session = Depends(get_db),
+    user: User = Depends(current_user),
+):
+    return list_user_purchases(db, user)
 
 
 @router.get("/{slug}", response_model=NewspaperOut)
