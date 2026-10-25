@@ -165,6 +165,12 @@ class Article(Base):
         nullable=False,
     )
 
+    content_format: Mapped[str] = mapped_column(
+        String(20),
+        default="html",
+        nullable=False,
+    )
+
     content_type: Mapped[str] = mapped_column(
         String(50),
         default="post",

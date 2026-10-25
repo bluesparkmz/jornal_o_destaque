@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from config import settings
-from routers import articles, auth, engagement, newspapers, taxonomy
+from routers import articles, auth, engagement, media, newspapers, taxonomy
 
 
 cfg = settings()
@@ -31,6 +31,7 @@ app.include_router(articles.router)
 app.include_router(taxonomy.router)
 app.include_router(engagement.router)
 app.include_router(newspapers.router)
+app.include_router(media.router)
 
 
 @app.get("/health", tags=["Sistema"])

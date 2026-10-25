@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 class RegisterIn(BaseModel): username:str=Field(min_length=3,max_length=100); email:EmailStr; password:str=Field(min_length=10,max_length=128); display_name:str|None=Field(default=None,max_length=255)
@@ -11,12 +12,12 @@ class TagIn(BaseModel): name:str=Field(min_length=1,max_length=255); slug:str=Fi
 class CategoryOut(CategoryIn): id:int; model_config=ConfigDict(from_attributes=True)
 class TagOut(TagIn): id:int; model_config=ConfigDict(from_attributes=True)
 class ArticleIn(BaseModel):
-    title:str=Field(min_length=1,max_length=500); slug:str=Field(min_length=1,max_length=500); excerpt:str|None=None; content:str=Field(min_length=1); status:str="draft"; category_ids:list[int]=[]; tag_ids:list[int]=[]; featured_image_url:str|None=None; published_at:datetime|None=None
+    title:str=Field(min_length=1,max_length=500); slug:str=Field(min_length=1,max_length=500); excerpt:str|None=None; content:str=Field(min_length=1); content_format:Literal["markdown","html"]="markdown"; status:str="draft"; category_ids:list[int]=[]; tag_ids:list[int]=[]; featured_image_url:str|None=None; published_at:datetime|None=None
 class ArticlePatch(BaseModel):
-    title:str|None=Field(default=None,max_length=500); slug:str|None=Field(default=None,max_length=500); excerpt:str|None=None; content:str|None=None; status:str|None=None; category_ids:list[int]|None=None; tag_ids:list[int]|None=None; featured_image_url:str|None=None; published_at:datetime|None=None
+    title:str|None=Field(default=None,max_length=500); slug:str|None=Field(default=None,max_length=500); excerpt:str|None=None; content:str|None=None; content_format:Literal["markdown","html"]|None=None; status:str|None=None; category_ids:list[int]|None=None; tag_ids:list[int]|None=None; featured_image_url:str|None=None; published_at:datetime|None=None
 class AuthorOut(BaseModel): id:int; username:str; display_name:str|None=None; model_config=ConfigDict(from_attributes=True)
 class ArticleOut(BaseModel):
-    id:int; title:str; slug:str; excerpt:str|None; content:str; status:str; views_count:int; featured_image_url:str|None; source_url:str|None; published_at:datetime|None; created_at:datetime; updated_at:datetime; author:AuthorOut|None; categories:list[CategoryOut]; tags:list[TagOut]
+    id:int; title:str; slug:str; excerpt:str|None; content:str; content_format:Literal["markdown","html"]; status:str; views_count:int; featured_image_url:str|None; source_url:str|None; published_at:datetime|None; created_at:datetime; updated_at:datetime; author:AuthorOut|None; categories:list[CategoryOut]; tags:list[TagOut]
     model_config=ConfigDict(from_attributes=True)
 class ArticlePage(BaseModel): items:list[ArticleOut]; page:int; per_page:int; total:int
 class CommentIn(BaseModel): author_name:str|None=Field(default=None,max_length=255); author_email:EmailStr|None=None; body:str=Field(min_length=2,max_length=4000)
@@ -28,6 +29,13 @@ class CommentOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 class SubscriberIn(BaseModel): email:EmailStr; name:str|None=Field(default=None,max_length=255)
 class Message(BaseModel): message:str
+class MediaOut(BaseModel):
+    id: int
+    url: str | None
+    mime_type: str | None
+    original_name: str | None
+    alt_text: str | None
+    model_config = ConfigDict(from_attributes=True)
 class NewspaperIn(BaseModel):
     title: str = Field(min_length=1, max_length=255)
     slug: str = Field(min_length=1, max_length=255)
