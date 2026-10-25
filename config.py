@@ -6,7 +6,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     app_name: str = "O Destaque API"
     environment: str = "development"
-    database_url: str = "mysql+pymysql://odestaque:change-me@127.0.0.1:3306/odestaque?charset=utf8mb4"
+    # Definida no .env em produção; este valor serve apenas de exemplo local.
+    database_url: str = "postgresql+psycopg://odestaque:change-me@127.0.0.1:5432/odestaque"
     jwt_secret_key: str = Field(min_length=32)
     jwt_algorithm: str = "HS256"
     access_token_minutes: int = Field(default=30, ge=5, le=1440)
