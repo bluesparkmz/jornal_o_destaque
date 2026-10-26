@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
-from controllers.article_controller import LOAD, assign, create, get_article, list_articles, query_public
+from controllers.article_controller import LOAD, apply_missing_covers, assign, create, get_article, list_articles, query_public
 from controllers.view_controller import register_view
 from database import get_db
 from models import Article, User
@@ -20,7 +20,9 @@ def admin_listing(page:int=Query(1,ge=1),per_page:int=Query(20,ge=1,le=100),db:S
     stmt=select(Article).options(*LOAD).order_by(Article.updated_at.desc())
     if user.role=="author": stmt=stmt.where(Article.author_id==user.id)
     total=db.scalar(select(func.count()).select_from(stmt.order_by(None).subquery())) or 0
-    return {"items":list(db.scalars(stmt.offset((page-1)*per_page).limit(per_page)).unique()),"page":page,"per_page":per_page,"total":total}
+    items=list(db.scalars(stmt.offset((page-1)*per_page).limit(per_page)).unique())
+    apply_missing_covers(items)
+    return {"items":items,"page":page,"per_page":per_page,"total":total}
 @router.get("/admin/{article_id}",response_model=ArticleOut)
 def admin_detail(article_id:int,db:Session=Depends(get_db),user:User=Depends(allow("admin","editor","author"))):
     item=get_article(db,article_id,False)

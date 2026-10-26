@@ -21,6 +21,11 @@ def unique_slug(db: Session, title: str) -> str:
 def first_markdown_image(content: str) -> str | None:
     match = re.search(r"!\[[^\]]*\]\(([^\s)]+)", content)
     return match.group(1) if match else None
+def apply_missing_covers(articles: list[Article]) -> None:
+    """Compatibilidade para artigos antigos criados antes da capa existir."""
+    for article in articles:
+        if not article.featured_image_url:
+            article.featured_image_url = first_markdown_image(article.content)
 def get_article(db:Session,article_id:int,public=True)->Article:
     query=select(Article).options(*LOAD).where(Article.id==article_id)
     if public: query=query.where(Article.status=="published")
@@ -36,7 +41,9 @@ def list_articles(db:Session,page:int,per_page:int,q:str|None=None,category:str|
     field={"published_at":Article.published_at,"title":Article.title,"created_at":Article.created_at}[sort]
     stmt=stmt.order_by(desc(field) if order=="desc" else asc(field))
     total=db.scalar(select(func.count()).select_from(stmt.order_by(None).subquery())) or 0
-    return list(db.scalars(stmt.offset((page-1)*per_page).limit(per_page)).unique()),total
+    articles = list(db.scalars(stmt.offset((page-1)*per_page).limit(per_page)).unique())
+    apply_missing_covers(articles)
+    return articles,total
 def assign(db:Session,article:Article,data:ArticleIn|ArticlePatch):
     values=data.model_dump(exclude_unset=True,exclude={"category_ids","tag_ids","slug"})
     if "status" in values and values["status"] not in {"draft","pending","published","archived"}: raise HTTPException(422,"Estado inválido")
