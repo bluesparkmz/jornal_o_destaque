@@ -18,6 +18,9 @@ def unique_slug(db: Session, title: str) -> str:
         slug = f"{base[:490-len(str(suffix))]}-{suffix}"
         suffix += 1
     return slug
+def first_markdown_image(content: str) -> str | None:
+    match = re.search(r"!\[[^\]]*\]\(([^\s)]+)", content)
+    return match.group(1) if match else None
 def get_article(db:Session,article_id:int,public=True)->Article:
     query=select(Article).options(*LOAD).where(Article.id==article_id)
     if public: query=query.where(Article.status=="published")
@@ -38,6 +41,8 @@ def assign(db:Session,article:Article,data:ArticleIn|ArticlePatch):
     values=data.model_dump(exclude_unset=True,exclude={"category_ids","tag_ids","slug"})
     if "status" in values and values["status"] not in {"draft","pending","published","archived"}: raise HTTPException(422,"Estado inválido")
     for key,value in values.items(): setattr(article,key,value)
+    if "content" in values and not article.featured_image_url:
+        article.featured_image_url = first_markdown_image(article.content)
     if article.status=="published" and not article.published_at: article.published_at=datetime.now(timezone.utc)
     if data.category_ids is not None: article.categories=list(db.scalars(select(Category).where(Category.id.in_(data.category_ids))).all())
     if data.tag_ids is not None: article.tags=list(db.scalars(select(Tag).where(Tag.id.in_(data.tag_ids))).all())
