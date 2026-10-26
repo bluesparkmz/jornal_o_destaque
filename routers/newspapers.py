@@ -1,8 +1,6 @@
 from datetime import datetime, timezone
-from pathlib import Path
-
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -15,6 +13,7 @@ from controllers.newspaper_controller import (
     update_purchase_status,
 )
 from controllers.media_controller import save_newspaper_cover
+from controllers.storage_controller import download_private
 from controllers.skywallet_controller import create_payment, payment_status
 from database import get_db
 from models import Newspaper, NewspaperPurchase, User
@@ -123,7 +122,9 @@ def purchase_status(
 @router.get("/{newspaper_id}/download")
 def download(newspaper_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)):
     item = can_download(db, newspaper_id, user)
-    path = Path(item.pdf_path)
-    if not path.is_file():
-        raise HTTPException(410, "O ficheiro deste jornal já não está disponível.")
-    return FileResponse(path, media_type="application/pdf", filename=f"{item.slug}.pdf")
+    object_data = download_private(item.pdf_path)
+    return StreamingResponse(
+        object_data["Body"].iter_chunks(),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{item.slug}.pdf"'},
+    )

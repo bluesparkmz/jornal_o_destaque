@@ -1,5 +1,4 @@
 from datetime import datetime, timezone
-from pathlib import Path
 import re
 import unicodedata
 from uuid import uuid4
@@ -9,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from config import settings
+from controllers.storage_controller import upload_bytes
 from models import Newspaper, NewspaperPurchase, User
 
 
@@ -30,12 +30,8 @@ async def save_pdf(pdf: UploadFile) -> str:
     if len(content) > settings().max_upload_bytes:
         raise HTTPException(413, "O PDF excede o limite de tamanho configurado.")
 
-    directory = settings().upload_dir / "newspapers"
-    directory.mkdir(parents=True, exist_ok=True)
     filename = f"{uuid4().hex}.pdf"
-    path = directory / filename
-    path.write_bytes(content)
-    return str(path)
+    return upload_bytes(f"newspapers/{filename}", content, "application/pdf", public=False)
 
 
 def create_newspaper(db: Session, newspaper: Newspaper) -> Newspaper:

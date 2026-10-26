@@ -7,6 +7,7 @@ from PIL import Image, UnidentifiedImageError
 from sqlalchemy.orm import Session
 
 from config import settings
+from controllers.storage_controller import upload_bytes
 from models import Media
 
 ALLOWED_FORMATS = {
@@ -65,17 +66,15 @@ async def upload_image(
     except UnidentifiedImageError:
         raise HTTPException(415, "Envie uma imagem JPEG, PNG ou WebP válida.")
 
-    directory = settings().upload_dir / "media"
-    directory.mkdir(parents=True, exist_ok=True)
     filename = f"{uuid4().hex}.webp"
-    path = directory / filename
 
     try:
         with Image.open(BytesIO(content)) as source:
             # O ficheiro de saída não conserva EXIF/GPS nem outros metadados.
             converted = source.convert("RGBA" if source.mode in {"RGBA", "LA", "P"} else "RGB")
+            output = BytesIO()
             converted.save(
-                path,
+                output,
                 format="WEBP",
                 quality=settings().image_webp_quality,
                 method=6,
@@ -86,8 +85,8 @@ async def upload_image(
     media = Media(
         article_id=article_id,
         original_name=Path(image.filename or filename).name,
-        file_path=str(path),
-        url=f"/uploads/media/{filename}",
+        file_path=f"media/{filename}",
+        url=upload_bytes(f"media/{filename}", output.getvalue(), "image/webp", public=True),
         mime_type="image/webp",
         alt_text=alt_text,
     )
@@ -112,16 +111,12 @@ async def upload_audio(
         raise HTTPException(415, "São permitidos apenas MP3, OGG, WAV, FLAC e M4A válidos.")
 
     mime_type, extension = detected
-    directory = settings().upload_dir / "audio"
-    directory.mkdir(parents=True, exist_ok=True)
     filename = f"{uuid4().hex}{extension}"
-    path = directory / filename
-    path.write_bytes(content)
     media = Media(
         article_id=article_id,
         original_name=Path(audio.filename or filename).name,
-        file_path=str(path),
-        url=f"/uploads/audio/{filename}",
+        file_path=f"audio/{filename}",
+        url=upload_bytes(f"audio/{filename}", content, mime_type, public=True),
         mime_type=mime_type,
     )
     db.add(media)
@@ -150,11 +145,10 @@ async def save_newspaper_cover(image: UploadFile) -> str:
             source.verify()
         with Image.open(BytesIO(content)) as source:
             converted = source.convert("RGBA" if source.mode in {"RGBA", "LA", "P"} else "RGB")
-            directory = settings().upload_dir / "newspaper-covers"
-            directory.mkdir(parents=True, exist_ok=True)
             filename = f"{uuid4().hex}.webp"
+            output = BytesIO()
             converted.save(
-                directory / filename,
+                output,
                 format="WEBP",
                 quality=settings().image_webp_quality,
                 method=6,
@@ -162,4 +156,4 @@ async def save_newspaper_cover(image: UploadFile) -> str:
     except (UnidentifiedImageError, OSError) as error:
         raise HTTPException(415, "A capa enviada não é uma imagem válida.") from error
 
-    return f"/uploads/newspaper-covers/{filename}"
+    return upload_bytes(f"newspaper-covers/{filename}", output.getvalue(), "image/webp", public=True)

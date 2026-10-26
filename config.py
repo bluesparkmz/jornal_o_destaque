@@ -16,6 +16,11 @@ class Settings(BaseSettings):
     upload_dir: Path = Path("uploads")
     max_upload_bytes: int = Field(default=5_000_000, ge=1)
     image_webp_quality: int = Field(default=82, ge=1, le=100)
+    r2_endpoint_url: str | None = None
+    r2_bucket_name: str | None = None
+    r2_access_key_id: str | None = None
+    r2_secret_access_key: str | None = None
+    r2_public_base_url: str | None = None
     wordpress_api_url: str = "https://odestaque.co.mz/wp-json/wp/v2"
     skywallet_base_url: str = "https://skywallet-api.bluesparkmz.com"
     skywallet_sk_id: str | None = None
