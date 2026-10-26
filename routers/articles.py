@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from controllers.article_controller import LOAD, assign, create, get_article, list_articles, query_public
 from controllers.view_controller import register_view
