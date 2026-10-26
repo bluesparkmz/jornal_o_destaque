@@ -1,3 +1,4 @@
+from io import BytesIO
 from pathlib import Path
 from uuid import uuid4
 
@@ -14,6 +15,26 @@ ALLOWED_FORMATS = {
     "WEBP",
 }
 
+AUDIO_SIGNATURES = {
+    b"ID3": ("audio/mpeg", ".mp3"),
+    b"OggS": ("audio/ogg", ".ogg"),
+    b"RIFF": ("audio/wav", ".wav"),
+    b"fLaC": ("audio/flac", ".flac"),
+}
+
+
+def detect_audio(content: bytes) -> tuple[str, str] | None:
+    for signature, result in AUDIO_SIGNATURES.items():
+        if content.startswith(signature):
+            return result
+    # MPEG frame sync, usado por MP3 sem metadados ID3.
+    if len(content) > 2 and content[0] == 0xFF and content[1] & 0xE0 == 0xE0:
+        return "audio/mpeg", ".mp3"
+    # ISO Base Media File: M4A/AAC contém a caixa ftyp no byte 4.
+    if len(content) > 12 and content[4:8] == b"ftyp":
+        return "audio/mp4", ".m4a"
+    return None
+
 
 async def upload_image(
     db: Session,
@@ -28,7 +49,6 @@ async def upload_image(
         raise HTTPException(413, "A imagem excede o limite de tamanho.")
 
     try:
-        from io import BytesIO
         with Image.open(BytesIO(content)) as source:
             image_format = source.format
             source.verify()
@@ -70,6 +90,39 @@ async def upload_image(
         url=f"/uploads/media/{filename}",
         mime_type="image/webp",
         alt_text=alt_text,
+    )
+    db.add(media)
+    db.commit()
+    db.refresh(media)
+    return media
+
+
+async def upload_audio(
+    db: Session,
+    audio: UploadFile,
+    article_id: int | None,
+) -> Media:
+    content = await audio.read()
+    if not content:
+        raise HTTPException(422, "O áudio está vazio.")
+    if len(content) > settings().max_upload_bytes:
+        raise HTTPException(413, "O áudio excede o limite de tamanho.")
+    detected = detect_audio(content)
+    if not detected:
+        raise HTTPException(415, "São permitidos apenas MP3, OGG, WAV, FLAC e M4A válidos.")
+
+    mime_type, extension = detected
+    directory = settings().upload_dir / "audio"
+    directory.mkdir(parents=True, exist_ok=True)
+    filename = f"{uuid4().hex}{extension}"
+    path = directory / filename
+    path.write_bytes(content)
+    media = Media(
+        article_id=article_id,
+        original_name=Path(audio.filename or filename).name,
+        file_path=str(path),
+        url=f"/uploads/audio/{filename}",
+        mime_type=mime_type,
     )
     db.add(media)
     db.commit()

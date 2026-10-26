@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, File, Form, UploadFile
 from sqlalchemy.orm import Session
 
-from controllers.media_controller import upload_image
+from controllers.media_controller import upload_audio, upload_image
 from database import get_db
 from models import User
 from routers.dependencies import allow
@@ -19,3 +19,13 @@ async def upload(
     _: User = Depends(allow("admin", "editor", "author")),
 ):
     return await upload_image(db, image, alt_text, article_id)
+
+
+@router.post("/upload-audio", response_model=MediaOut, status_code=201)
+async def upload_audio_file(
+    audio: UploadFile = File(...),
+    article_id: int | None = Form(default=None),
+    db: Session = Depends(get_db),
+    _: User = Depends(allow("admin", "editor", "author")),
+):
+    return await upload_audio(db, audio, article_id)
