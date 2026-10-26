@@ -35,7 +35,7 @@ def list_articles(db:Session,page:int,per_page:int,q:str|None=None,category:str|
     total=db.scalar(select(func.count()).select_from(stmt.order_by(None).subquery())) or 0
     return list(db.scalars(stmt.offset((page-1)*per_page).limit(per_page)).unique()),total
 def assign(db:Session,article:Article,data:ArticleIn|ArticlePatch):
-    values=data.model_dump(exclude_unset=True,exclude={"category_ids","tag_ids"})
+    values=data.model_dump(exclude_unset=True,exclude={"category_ids","tag_ids","slug"})
     if "status" in values and values["status"] not in {"draft","pending","published","archived"}: raise HTTPException(422,"Estado inválido")
     for key,value in values.items(): setattr(article,key,value)
     if article.status=="published" and not article.published_at: article.published_at=datetime.now(timezone.utc)
