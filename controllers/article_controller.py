@@ -1,4 +1,6 @@
 from datetime import datetime, timezone
+import re
+import unicodedata
 from fastapi import HTTPException, status
 from sqlalchemy import asc, desc, func, or_, select
 from sqlalchemy.orm import Session, selectinload
@@ -7,6 +9,15 @@ from schemas import ArticleIn, ArticlePatch
 
 LOAD=(selectinload(Article.author),selectinload(Article.categories),selectinload(Article.tags))
 def query_public(): return select(Article).options(*LOAD).where(Article.status=="published")
+def unique_slug(db: Session, title: str) -> str:
+    value = unicodedata.normalize("NFKD", title).encode("ascii", "ignore").decode().lower()
+    base = re.sub(r"[^a-z0-9]+", "-", value).strip("-")[:490]
+    if not base: raise HTTPException(422, "Não foi possível gerar um slug a partir do título")
+    slug, suffix = base, 2
+    while db.scalar(select(Article.id).where(Article.slug == slug)):
+        slug = f"{base[:490-len(str(suffix))]}-{suffix}"
+        suffix += 1
+    return slug
 def get_article(db:Session,article_id:int,public=True)->Article:
     query=select(Article).options(*LOAD).where(Article.id==article_id)
     if public: query=query.where(Article.status=="published")
@@ -31,5 +42,7 @@ def assign(db:Session,article:Article,data:ArticleIn|ArticlePatch):
     if data.category_ids is not None: article.categories=list(db.scalars(select(Category).where(Category.id.in_(data.category_ids))).all())
     if data.tag_ids is not None: article.tags=list(db.scalars(select(Tag).where(Tag.id.in_(data.tag_ids))).all())
 def create(db:Session,data:ArticleIn,user:User)->Article:
+    # O endereço público é sempre derivado do título; ignorar slug do cliente.
+    data.slug = None
     if db.scalar(select(Article).where(Article.slug==data.slug)): raise HTTPException(409,"Slug já existe")
-    article=Article(author_id=user.id,title=data.title,slug=data.slug,content=data.content); assign(db,article,data); db.add(article); db.commit(); return get_article(db,article.id,False)
+    article=Article(author_id=user.id,title=data.title,slug=unique_slug(db,data.title),content=data.content); assign(db,article,data); db.add(article); db.commit(); return get_article(db,article.id,False)

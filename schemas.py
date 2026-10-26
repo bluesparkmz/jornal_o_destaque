@@ -21,7 +21,7 @@ class TagIn(BaseModel): name:str=Field(min_length=1,max_length=255); slug:str=Fi
 class CategoryOut(CategoryIn): id:int; model_config=ConfigDict(from_attributes=True)
 class TagOut(TagIn): id:int; model_config=ConfigDict(from_attributes=True)
 class ArticleIn(BaseModel):
-    title:str=Field(min_length=1,max_length=500); slug:str=Field(min_length=1,max_length=500); excerpt:str|None=None; content:str=Field(min_length=1); content_format:Literal["markdown","html"]="markdown"; status:str="draft"; category_ids:list[int]=[]; tag_ids:list[int]=[]; featured_image_url:str|None=None; published_at:datetime|None=None
+    title:str=Field(min_length=1,max_length=500); slug:str|None=None; excerpt:str|None=None; content:str=Field(min_length=1); content_format:Literal["markdown","html"]="markdown"; status:str="draft"; category_ids:list[int]=[]; tag_ids:list[int]=[]; featured_image_url:str|None=None; published_at:datetime|None=None
 class ArticlePatch(BaseModel):
     title:str|None=Field(default=None,max_length=500); slug:str|None=Field(default=None,max_length=500); excerpt:str|None=None; content:str|None=None; content_format:Literal["markdown","html"]|None=None; status:str|None=None; category_ids:list[int]|None=None; tag_ids:list[int]|None=None; featured_image_url:str|None=None; published_at:datetime|None=None
 class AuthorOut(BaseModel): id:int; username:str; display_name:str|None=None; model_config=ConfigDict(from_attributes=True)
