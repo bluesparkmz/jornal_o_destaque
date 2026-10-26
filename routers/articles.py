@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from controllers.article_controller import assign, create, get_article, list_articles, query_public
+from controllers.article_controller import LOAD, assign, create, get_article, list_articles, query_public
 from controllers.view_controller import register_view
 from database import get_db
 from models import Article, User
@@ -15,6 +15,17 @@ def listing(page:int=Query(1,ge=1),per_page:int=Query(20,ge=1,le=100),q:str|None
 def latest(db:Session=Depends(get_db)): return list_articles(db,1,10,sort="published_at")[0]
 @router.get("/featured",response_model=list[ArticleOut])
 def featured(db:Session=Depends(get_db)): return list_articles(db,1,10,category="destaque")[0]
+@router.get("/admin/list",response_model=ArticlePage)
+def admin_listing(page:int=Query(1,ge=1),per_page:int=Query(20,ge=1,le=100),db:Session=Depends(get_db),user:User=Depends(allow("admin","editor","author"))):
+    stmt=select(Article).options(*LOAD).order_by(Article.updated_at.desc())
+    if user.role=="author": stmt=stmt.where(Article.author_id==user.id)
+    total=db.scalar(select(func.count()).select_from(stmt.order_by(None).subquery())) or 0
+    return {"items":list(db.scalars(stmt.offset((page-1)*per_page).limit(per_page)).unique()),"page":page,"per_page":per_page,"total":total}
+@router.get("/admin/{article_id}",response_model=ArticleOut)
+def admin_detail(article_id:int,db:Session=Depends(get_db),user:User=Depends(allow("admin","editor","author"))):
+    item=get_article(db,article_id,False)
+    if user.role=="author" and item.author_id!=user.id: raise HTTPException(403,"Sem permissão para este artigo")
+    return item
 @router.get("/search",response_model=ArticlePage)
 def search(q:str=Query(min_length=2,max_length=150),page:int=Query(1,ge=1),per_page:int=Query(20,ge=1,le=100),db:Session=Depends(get_db)):
     items,total=list_articles(db,page,per_page,q=q); return {"items":items,"page":page,"per_page":per_page,"total":total}
