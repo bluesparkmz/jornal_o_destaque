@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 
 from config import settings
 from controllers.bootstrap_controller import create_initial_admin
-from database import SessionLocal
+from database import SessionLocal, create_database_schema
 from routers import admin, articles, auth, engagement, media, newspapers, taxonomy
 
 
@@ -39,6 +39,7 @@ app.include_router(admin.router)
 
 @app.on_event("startup")
 def bootstrap_admin() -> None:
+    create_database_schema()
     session = SessionLocal()
     try:
         create_initial_admin(session)
