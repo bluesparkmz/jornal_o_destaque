@@ -3,7 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from config import settings
-from routers import articles, auth, engagement, media, newspapers, taxonomy
+from controllers.bootstrap_controller import create_initial_admin
+from database import SessionLocal
+from routers import admin, articles, auth, engagement, media, newspapers, taxonomy
 
 
 cfg = settings()
@@ -32,6 +34,16 @@ app.include_router(taxonomy.router)
 app.include_router(engagement.router)
 app.include_router(newspapers.router)
 app.include_router(media.router)
+app.include_router(admin.router)
+
+
+@app.on_event("startup")
+def bootstrap_admin() -> None:
+    session = SessionLocal()
+    try:
+        create_initial_admin(session)
+    finally:
+        session.close()
 
 
 @app.get("/health", tags=["Sistema"])

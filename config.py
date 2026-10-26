@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     skywallet_base_url: str = "https://skywallet-api.bluesparkmz.com"
     skywallet_sk_id: str | None = None
     skywallet_api_key: str | None = None
+    admin_email: str | None = None
+    admin_password: str | None = None
+    admin_username: str = "admin"
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
     @property
     def cors_origin_list(self) -> list[str]: return [x.strip() for x in self.cors_origins.split(",") if x.strip()]

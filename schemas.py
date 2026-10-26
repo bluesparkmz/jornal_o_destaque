@@ -7,6 +7,15 @@ class LoginIn(BaseModel): identity:str=Field(min_length=3,max_length=255); passw
 class RefreshIn(BaseModel): refresh_token:str
 class TokenOut(BaseModel): access_token:str; refresh_token:str; token_type:str="bearer"
 class UserOut(BaseModel): id:int; username:str; email:EmailStr|None; display_name:str|None; role:str; is_active:bool; model_config=ConfigDict(from_attributes=True)
+class AdminUserCreate(BaseModel):
+    username: str = Field(min_length=3, max_length=100)
+    email: EmailStr
+    password: str = Field(min_length=10, max_length=128)
+    display_name: str | None = Field(default=None, max_length=255)
+    role: Literal["admin", "editor", "author", "reader"] = "reader"
+class UserRoleUpdate(BaseModel):
+    role: Literal["admin", "editor", "author", "reader"]
+    is_active: bool | None = None
 class CategoryIn(BaseModel): name:str=Field(min_length=1,max_length=255); slug:str=Field(min_length=1,max_length=255); description:str|None=None; parent_id:int|None=None
 class TagIn(BaseModel): name:str=Field(min_length=1,max_length=255); slug:str=Field(min_length=1,max_length=255)
 class CategoryOut(CategoryIn): id:int; model_config=ConfigDict(from_attributes=True)
