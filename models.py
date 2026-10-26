@@ -190,6 +190,13 @@ class Article(Base):
         nullable=False,
     )
 
+    views_count: Mapped[int] = mapped_column(
+        Integer,
+        default=0,
+        nullable=False,
+        index=True,
+    )
+
     author_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
@@ -427,13 +434,6 @@ class Comment(Base):
 
     article_id: Mapped[int] = mapped_column(
         ForeignKey("articles.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
-    )
-
-    views_count: Mapped[int] = mapped_column(
-        Integer,
-        default=0,
         nullable=False,
         index=True,
     )
