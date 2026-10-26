@@ -14,6 +14,7 @@ from controllers.newspaper_controller import (
     save_pdf,
     update_purchase_status,
 )
+from controllers.media_controller import save_newspaper_cover
 from controllers.skywallet_controller import create_payment, payment_status
 from database import get_db
 from models import Newspaper, NewspaperPurchase, User
@@ -47,20 +48,20 @@ def newspaper(slug: str, db: Session = Depends(get_db)):
 @router.post("/upload", response_model=NewspaperOut, status_code=201)
 async def upload_newspaper(
     title: str = Form(...),
-    slug: str = Form(...),
     price_cents: int = Form(...),
     pdf: UploadFile = File(...),
     description: str | None = Form(default=None),
     issue_number: str | None = Form(default=None),
-    cover_url: str | None = Form(default=None),
+    cover_image: UploadFile = File(...),
     is_published: bool = Form(default=False),
     db: Session = Depends(get_db),
     _: User = Depends(allow("admin", "editor")),
 ):
     path = await save_pdf(pdf)
+    cover_url = await save_newspaper_cover(cover_image)
     item = Newspaper(
         title=title,
-        slug=slug,
+        slug=title,
         description=description,
         issue_number=issue_number,
         cover_url=cover_url,

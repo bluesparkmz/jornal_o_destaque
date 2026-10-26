@@ -1,5 +1,7 @@
 from datetime import datetime, timezone
 from pathlib import Path
+import re
+import unicodedata
 from uuid import uuid4
 
 from fastapi import HTTPException, UploadFile
@@ -8,6 +10,14 @@ from sqlalchemy.orm import Session
 
 from config import settings
 from models import Newspaper, NewspaperPurchase, User
+
+
+def slugify(value: str) -> str:
+    normalized = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode()
+    slug = re.sub(r"[^a-z0-9]+", "-", normalized.lower()).strip("-")
+    if not slug:
+        raise HTTPException(422, "Não foi possível gerar um slug a partir do título.")
+    return slug[:255]
 
 
 async def save_pdf(pdf: UploadFile) -> str:
@@ -29,8 +39,13 @@ async def save_pdf(pdf: UploadFile) -> str:
 
 
 def create_newspaper(db: Session, newspaper: Newspaper) -> Newspaper:
-    if db.scalar(select(Newspaper).where(Newspaper.slug == newspaper.slug)):
-        raise HTTPException(409, "Já existe um jornal com este slug.")
+    base_slug = slugify(newspaper.slug or newspaper.title)
+    slug = base_slug
+    suffix = 2
+    while db.scalar(select(Newspaper.id).where(Newspaper.slug == slug)):
+        slug = f"{base_slug[:250]}-{suffix}"
+        suffix += 1
+    newspaper.slug = slug
     if newspaper.price_cents < 0:
         raise HTTPException(422, "O preço não pode ser negativo.")
     if newspaper.is_published:

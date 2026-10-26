@@ -75,3 +75,38 @@ async def upload_image(
     db.commit()
     db.refresh(media)
     return media
+
+
+async def save_newspaper_cover(image: UploadFile) -> str:
+    """Valida e converte a capa do jornal para WebP, sem criar um registo Media."""
+    content = await image.read()
+    if not content:
+        raise HTTPException(422, "A capa está vazia.")
+    if len(content) > settings().max_upload_bytes:
+        raise HTTPException(413, "A capa excede o limite de tamanho.")
+
+    from io import BytesIO
+
+    try:
+        with Image.open(BytesIO(content)) as source:
+            image_format = source.format
+            if image_format not in ALLOWED_FORMATS:
+                raise HTTPException(415, "A capa deve ser JPEG, PNG ou WebP.")
+            if getattr(source, "n_frames", 1) > 1:
+                raise HTTPException(422, "Capas animadas não são permitidas.")
+            source.verify()
+        with Image.open(BytesIO(content)) as source:
+            converted = source.convert("RGBA" if source.mode in {"RGBA", "LA", "P"} else "RGB")
+            directory = settings().upload_dir / "newspaper-covers"
+            directory.mkdir(parents=True, exist_ok=True)
+            filename = f"{uuid4().hex}.webp"
+            converted.save(
+                directory / filename,
+                format="WEBP",
+                quality=settings().image_webp_quality,
+                method=6,
+            )
+    except (UnidentifiedImageError, OSError) as error:
+        raise HTTPException(415, "A capa enviada não é uma imagem válida.") from error
+
+    return f"/uploads/newspaper-covers/{filename}"
