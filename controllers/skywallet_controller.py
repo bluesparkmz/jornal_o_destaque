@@ -1,10 +1,13 @@
 from decimal import Decimal
+import logging
 from uuid import uuid4
 
 import httpx
 from fastapi import HTTPException
 
 from config import settings
+
+logger = logging.getLogger(__name__)
 
 
 def _headers() -> dict[str, str]:
@@ -39,6 +42,7 @@ def create_payment(msisdn: str, amount: int, description: str) -> str:
         response.raise_for_status()
     except httpx.HTTPError as error:
         raise HTTPException(502, "Não foi possível iniciar o pagamento M-Pesa.") from error
+    logger.info("SkyWallet payment request accepted: order_id=%s", order_id)
     return order_id
 
 
@@ -56,6 +60,7 @@ def payment_status(order_id: str) -> str:
     except (httpx.HTTPError, ValueError) as error:
         raise HTTPException(502, "Não foi possível confirmar o estado do pagamento.") from error
     state = str(data.get("status", "pending")).lower()
+    logger.info("SkyWallet payment status: order_id=%s status=%s", order_id, state)
     if state not in {"success", "failed", "pending"}:
         return "pending"
     return state

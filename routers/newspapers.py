@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import logging
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
@@ -24,6 +25,7 @@ from routers.dependencies import allow, current_user, optional_user
 from schemas import CheckoutIn, DirectPdfUploadOut, NewspaperDirectIn, NewspaperOut, PaymentRequestIn, PurchaseOut
 
 router = APIRouter(prefix="/newspapers", tags=["Jornais digitais"])
+logger = logging.getLogger(__name__)
 
 
 @router.get("", response_model=list[NewspaperOut])
@@ -153,6 +155,7 @@ def purchase_status(
     if not purchase or not purchase_allowed(purchase, user, token):
         raise HTTPException(404, "Compra não encontrada.")
     if purchase.status == "pending" and purchase.provider_reference:
+        logger.info("Checking SkyWallet payment: purchase_id=%s", purchase.id)
         update_purchase_status(purchase, payment_status(purchase.provider_reference))
         db.commit()
         db.refresh(purchase)
