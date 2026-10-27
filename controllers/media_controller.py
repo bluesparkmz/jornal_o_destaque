@@ -3,7 +3,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from fastapi import HTTPException, UploadFile
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageOps, UnidentifiedImageError
 from sqlalchemy.orm import Session
 
 from config import settings
@@ -15,6 +15,17 @@ ALLOWED_FORMATS = {
     "PNG",
     "WEBP",
 }
+
+
+def webp_content(source: Image.Image) -> bytes:
+    """Remove metadados e limita a resolução antes do envio ao R2."""
+    prepared = ImageOps.exif_transpose(source)
+    maximum = settings().image_max_dimension
+    prepared.thumbnail((maximum, maximum), Image.Resampling.LANCZOS)
+    converted = prepared.convert("RGBA" if prepared.mode in {"RGBA", "LA", "P"} else "RGB")
+    output = BytesIO()
+    converted.save(output, format="WEBP", quality=settings().image_webp_quality, method=6)
+    return output.getvalue()
 
 AUDIO_SIGNATURES = {
     b"ID3": ("audio/mpeg", ".mp3"),
@@ -71,14 +82,7 @@ async def upload_image(
     try:
         with Image.open(BytesIO(content)) as source:
             # O ficheiro de saída não conserva EXIF/GPS nem outros metadados.
-            converted = source.convert("RGBA" if source.mode in {"RGBA", "LA", "P"} else "RGB")
-            output = BytesIO()
-            converted.save(
-                output,
-                format="WEBP",
-                quality=settings().image_webp_quality,
-                method=6,
-            )
+            optimized = webp_content(source)
     except OSError as error:
         raise HTTPException(422, "Não foi possível converter a imagem para WebP.") from error
 
@@ -86,7 +90,7 @@ async def upload_image(
         article_id=article_id,
         original_name=Path(image.filename or filename).name,
         file_path=f"media/{filename}",
-        url=upload_bytes(f"media/{filename}", output.getvalue(), "image/webp", public=True),
+        url=upload_bytes(f"media/{filename}", optimized, "image/webp", public=True),
         mime_type="image/webp",
         alt_text=alt_text,
     )
@@ -144,16 +148,9 @@ async def save_newspaper_cover(image: UploadFile) -> str:
                 raise HTTPException(422, "Capas animadas não são permitidas.")
             source.verify()
         with Image.open(BytesIO(content)) as source:
-            converted = source.convert("RGBA" if source.mode in {"RGBA", "LA", "P"} else "RGB")
             filename = f"{uuid4().hex}.webp"
-            output = BytesIO()
-            converted.save(
-                output,
-                format="WEBP",
-                quality=settings().image_webp_quality,
-                method=6,
-            )
+            optimized = webp_content(source)
     except (UnidentifiedImageError, OSError) as error:
         raise HTTPException(415, "A capa enviada não é uma imagem válida.") from error
 
-    return upload_bytes(f"newspaper-covers/{filename}", output.getvalue(), "image/webp", public=True)
+    return upload_bytes(f"newspaper-covers/{filename}", optimized, "image/webp", public=True)

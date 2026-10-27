@@ -14,8 +14,10 @@ class Settings(BaseSettings):
     refresh_token_days: int = Field(default=14, ge=1, le=90)
     cors_origins: str = "http://localhost:3000,http://192.168.1.167:3000"
     upload_dir: Path = Path("uploads")
-    max_upload_bytes: int = Field(default=5_000_000, ge=1)
+    # Aceita o original maior; imagens são convertidas para WebP antes de ir ao R2.
+    max_upload_bytes: int = Field(default=25_000_000, ge=1, le=100_000_000)
     image_webp_quality: int = Field(default=82, ge=1, le=100)
+    image_max_dimension: int = Field(default=2560, ge=320, le=10000)
     r2_endpoint_url: str | None = None
     r2_bucket_name: str | None = None
     r2_access_key_id: str | None = None
