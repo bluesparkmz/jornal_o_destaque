@@ -4,6 +4,8 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from config import settings
+
 from controllers.newspaper_controller import (
     can_download,
     create_newspaper,
@@ -13,12 +15,12 @@ from controllers.newspaper_controller import (
     update_purchase_status,
 )
 from controllers.media_controller import save_newspaper_cover
-from controllers.storage_controller import download_private
+from controllers.storage_controller import create_private_pdf_upload, download_private, private_pdf_size
 from controllers.skywallet_controller import create_payment, payment_status
 from database import get_db
 from models import Newspaper, NewspaperPurchase, User
 from routers.dependencies import allow, current_user
-from schemas import NewspaperOut, PaymentRequestIn, PurchaseOut
+from schemas import DirectPdfUploadOut, NewspaperDirectIn, NewspaperOut, PaymentRequestIn, PurchaseOut
 
 router = APIRouter(prefix="/newspapers", tags=["Jornais digitais"])
 
@@ -69,6 +71,35 @@ async def upload_newspaper(
         is_published=is_published,
     )
     return create_newspaper(db, item)
+
+
+@router.post("/pdf-upload-url", response_model=DirectPdfUploadOut)
+def pdf_upload_url(_: User = Depends(allow("admin", "editor"))):
+    key, upload_url = create_private_pdf_upload()
+    return DirectPdfUploadOut(key=key, upload_url=upload_url, headers={"Content-Type": "application/pdf"})
+
+
+@router.post("/direct", response_model=NewspaperOut, status_code=201)
+def create_uploaded_newspaper(
+    data: NewspaperDirectIn,
+    db: Session = Depends(get_db),
+    _: User = Depends(allow("admin", "editor")),
+):
+    size = private_pdf_size(data.pdf_key)
+    if size < 5:
+        raise HTTPException(422, "O PDF enviado está vazio.")
+    if size > settings().max_newspaper_pdf_bytes:
+        raise HTTPException(413, "O PDF excede o limite permitido.")
+    return create_newspaper(db, Newspaper(
+        title=data.title,
+        slug=data.title,
+        description=data.description,
+        issue_number=data.issue_number,
+        cover_url=data.cover_url,
+        pdf_path=data.pdf_key,
+        price_cents=data.price_cents,
+        is_published=data.is_published,
+    ))
 
 
 @router.post("/{newspaper_id}/purchase", response_model=PurchaseOut, status_code=201)

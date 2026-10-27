@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     max_upload_bytes: int = Field(default=25_000_000, ge=1, le=100_000_000)
     image_webp_quality: int = Field(default=82, ge=1, le=100)
     image_max_dimension: int = Field(default=2560, ge=320, le=10000)
+    max_newspaper_pdf_bytes: int = Field(default=250_000_000, ge=1, le=1_000_000_000)
     r2_endpoint_url: str | None = None
     r2_bucket_name: str | None = None
     r2_access_key_id: str | None = None

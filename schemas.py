@@ -59,6 +59,18 @@ class NewspaperOut(BaseModel):
     cover_url: str | None; price_cents: int; currency: str; is_published: bool
     published_at: datetime | None; created_at: datetime
     model_config = ConfigDict(from_attributes=True)
+class DirectPdfUploadOut(BaseModel):
+    key: str
+    upload_url: str
+    headers: dict[str, str]
+class NewspaperDirectIn(BaseModel):
+    title: str = Field(min_length=1, max_length=255)
+    description: str | None = None
+    issue_number: str | None = Field(default=None, max_length=100)
+    cover_url: str = Field(min_length=1, max_length=1000)
+    price_cents: int = Field(ge=0)
+    is_published: bool = False
+    pdf_key: str = Field(min_length=1, max_length=500)
 class PurchaseOut(BaseModel):
     id: int; newspaper_id: int; amount_cents: int; currency: str; status: str
     created_at: datetime; paid_at: datetime | None

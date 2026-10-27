@@ -39,6 +39,37 @@ def upload_bytes(key: str, content: bytes, content_type: str, public: bool) -> s
     return key
 
 
+def create_private_pdf_upload() -> tuple[str, str]:
+    """Cria uma URL temporária; credenciais R2 nunca são enviadas ao browser."""
+    cfg = settings()
+    from uuid import uuid4
+    key = f"newspapers/{uuid4().hex}.pdf"
+    try:
+        url = _client().generate_presigned_url(
+            "put_object",
+            Params={"Bucket": cfg.r2_bucket_name, "Key": key, "ContentType": "application/pdf"},
+            ExpiresIn=900,
+            HttpMethod="PUT",
+        )
+    except (BotoCoreError, ClientError) as error:
+        raise HTTPException(502, "Não foi possível preparar o envio directo ao R2.") from error
+    return key, url
+
+
+def private_pdf_size(key: str) -> int:
+    if not key.startswith("newspapers/") or not key.endswith(".pdf"):
+        raise HTTPException(422, "Referência de PDF inválida.")
+    try:
+        result = _client().head_object(Bucket=settings().r2_bucket_name, Key=key)
+        if result.get("ContentType") != "application/pdf":
+            raise HTTPException(415, "O ficheiro enviado não é um PDF.")
+        return int(result.get("ContentLength", 0))
+    except HTTPException:
+        raise
+    except (BotoCoreError, ClientError) as error:
+        raise HTTPException(422, "O PDF não foi encontrado no R2.") from error
+
+
 def download_private(key: str):
     try:
         return _client().get_object(Bucket=settings().r2_bucket_name, Key=key)
