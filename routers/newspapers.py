@@ -49,7 +49,7 @@ def newspaper(slug: str, db: Session = Depends(get_db)):
 @router.post("/upload", response_model=NewspaperOut, status_code=201)
 async def upload_newspaper(
     title: str = Form(...),
-    price_cents: int = Form(...),
+    price: int = Form(...),
     pdf: UploadFile = File(...),
     description: str | None = Form(default=None),
     issue_number: str | None = Form(default=None),
@@ -67,7 +67,7 @@ async def upload_newspaper(
         issue_number=issue_number,
         cover_url=cover_url,
         pdf_path=path,
-        price_cents=price_cents,
+        price=price,
         is_published=is_published,
     )
     return create_newspaper(db, item)
@@ -97,7 +97,7 @@ def create_uploaded_newspaper(
         issue_number=data.issue_number,
         cover_url=data.cover_url,
         pdf_path=data.pdf_key,
-        price_cents=data.price_cents,
+        price=data.price,
         is_published=data.is_published,
     ))
 
@@ -125,7 +125,7 @@ def pay(
     newspaper = db.get(Newspaper, purchase.newspaper_id)
     purchase.provider_reference = create_payment(
         data.msisdn,
-        purchase.amount_cents,
+        purchase.amount,
         f"Jornal O Destaque: {newspaper.title}",
     )
     purchase.status = "pending"

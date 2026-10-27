@@ -18,11 +18,11 @@ def _headers() -> dict[str, str]:
     }
 
 
-def create_payment(msisdn: str, amount_cents: int, description: str) -> str:
+def create_payment(msisdn: str, amount: int, description: str) -> str:
     """Pede o pagamento M-Pesa e devolve o order_id local a consultar."""
     cfg = settings()
     order_id = f"ODESTAQUE-{uuid4().hex[:20].upper()}"
-    amount = str(Decimal(amount_cents) / Decimal(100))
+    amount = str(Decimal(amount))
     try:
         response = httpx.post(
             f"{cfg.skywallet_base_url.rstrip('/')}/api/developer/payment/request",

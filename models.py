@@ -556,7 +556,8 @@ class Newspaper(Base):
     issue_number: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     cover_url: Mapped[Optional[str]] = mapped_column(String(1000), nullable=True)
     pdf_path: Mapped[str] = mapped_column(String(1000), nullable=False)
-    price_cents: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    # Coluna antiga mantida para não exigir migração, mas o valor é MZN inteiro.
+    price: Mapped[int] = mapped_column("price_cents", Integer, default=0, nullable=False)
     currency: Mapped[str] = mapped_column(String(3), default="MZN", nullable=False)
     is_published: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
     published_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
@@ -574,7 +575,8 @@ class NewspaperPurchase(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     newspaper_id: Mapped[int] = mapped_column(ForeignKey("newspapers.id", ondelete="CASCADE"), nullable=False, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    amount_cents: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Coluna antiga mantida para compatibilidade; o valor é MZN inteiro.
+    amount: Mapped[int] = mapped_column("amount_cents", Integer, nullable=False)
     currency: Mapped[str] = mapped_column(String(3), nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="pending", nullable=False, index=True)
     provider_reference: Mapped[Optional[str]] = mapped_column(String(255), unique=True, nullable=True)

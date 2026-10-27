@@ -51,12 +51,12 @@ class NewspaperIn(BaseModel):
     description: str | None = None
     issue_number: str | None = Field(default=None, max_length=100)
     cover_url: str | None = Field(default=None, max_length=1000)
-    price_cents: int = Field(ge=0)
+    price: int = Field(ge=0)
     currency: str = Field(default="MZN", min_length=3, max_length=3)
     is_published: bool = False
 class NewspaperOut(BaseModel):
     id: int; title: str; slug: str; description: str | None; issue_number: str | None
-    cover_url: str | None; price_cents: int; currency: str; is_published: bool
+    cover_url: str | None; price: int; currency: str; is_published: bool
     published_at: datetime | None; created_at: datetime
     model_config = ConfigDict(from_attributes=True)
 class DirectPdfUploadOut(BaseModel):
@@ -68,11 +68,11 @@ class NewspaperDirectIn(BaseModel):
     description: str | None = None
     issue_number: str | None = Field(default=None, max_length=100)
     cover_url: str = Field(min_length=1, max_length=1000)
-    price_cents: int = Field(ge=0)
+    price: int = Field(ge=0)
     is_published: bool = False
     pdf_key: str = Field(min_length=1, max_length=500)
 class PurchaseOut(BaseModel):
-    id: int; newspaper_id: int; amount_cents: int; currency: str; status: str
+    id: int; newspaper_id: int; amount: int; currency: str; status: str
     created_at: datetime; paid_at: datetime | None
     model_config = ConfigDict(from_attributes=True)
 class PaymentRequestIn(BaseModel):

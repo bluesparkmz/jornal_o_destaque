@@ -42,7 +42,7 @@ def create_newspaper(db: Session, newspaper: Newspaper) -> Newspaper:
         slug = f"{base_slug[:250]}-{suffix}"
         suffix += 1
     newspaper.slug = slug
-    if newspaper.price_cents < 0:
+    if newspaper.price < 0:
         raise HTTPException(422, "O preço não pode ser negativo.")
     if newspaper.is_published:
         newspaper.published_at = datetime.now(timezone.utc)
@@ -65,10 +65,10 @@ def purchase_newspaper(db: Session, newspaper: Newspaper, user: User) -> Newspap
     purchase = NewspaperPurchase(
         newspaper_id=newspaper.id,
         user_id=user.id,
-        amount_cents=newspaper.price_cents,
+        amount=newspaper.price,
         currency=newspaper.currency,
-        status="paid" if newspaper.price_cents == 0 else "pending",
-        paid_at=datetime.now(timezone.utc) if newspaper.price_cents == 0 else None,
+        status="paid" if newspaper.price == 0 else "pending",
+        paid_at=datetime.now(timezone.utc) if newspaper.price == 0 else None,
     )
     db.add(purchase)
     db.commit()
