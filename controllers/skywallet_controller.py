@@ -24,15 +24,16 @@ def _headers() -> dict[str, str]:
 def create_payment(msisdn: str, amount: int, description: str) -> str:
     """Pede o pagamento M-Pesa e devolve o order_id local a consultar."""
     cfg = settings()
-    order_id = f"ODESTAQUE-{uuid4().hex[:20].upper()}"
-    amount = str(Decimal(amount))
+    # Limite M-Pesa: 20 caracteres alfanuméricos, sem hífen.
+    order_id = f"ODESTAQUE{uuid4().hex[:11].upper()}"
+    payment_amount = int(Decimal(amount))
     try:
         response = httpx.post(
             f"{cfg.skywallet_base_url.rstrip('/')}/api/developer/payment/request",
             headers=_headers(),
             json={
                 "msisdn": msisdn,
-                "amount": amount,
+                "amount": payment_amount,
                 "currency": "MZN",
                 "description": description[:250],
                 "order_id": order_id,
@@ -40,7 +41,10 @@ def create_payment(msisdn: str, amount: int, description: str) -> str:
             timeout=50,
         )
         response.raise_for_status()
-    except httpx.HTTPError as error:
+        data = response.json()
+        if data.get("success") is not True or str(data.get("status", "")).lower() != "pending":
+            raise ValueError("SkyWallet não aceitou o pedido.")
+    except (httpx.HTTPError, ValueError) as error:
         raise HTTPException(502, "Não foi possível iniciar o pagamento M-Pesa.") from error
     logger.info("SkyWallet payment request accepted: order_id=%s", order_id)
     return order_id

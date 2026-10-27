@@ -76,9 +76,9 @@ class PurchaseOut(BaseModel):
     created_at: datetime; paid_at: datetime | None
     model_config = ConfigDict(from_attributes=True)
 class PaymentRequestIn(BaseModel):
-    msisdn: str = Field(min_length=9, max_length=20, pattern=r"^[0-9+]+$")
+    msisdn: str = Field(min_length=9, max_length=20, pattern=r"^(84|85)[0-9]+$")
     checkout_token: str | None = Field(default=None, min_length=20, max_length=128)
 class CheckoutIn(BaseModel):
     name: str | None = Field(default=None, max_length=255)
     email: EmailStr | None = None
-    msisdn: str | None = Field(default=None, min_length=9, max_length=20, pattern=r"^[0-9+]+$")
+    msisdn: str | None = Field(default=None, min_length=9, max_length=20, pattern=r"^(84|85)[0-9]+$")
