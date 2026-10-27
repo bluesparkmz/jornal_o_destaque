@@ -108,7 +108,14 @@ def purchase(newspaper_id: int, data: CheckoutIn, db: Session = Depends(get_db),
     item = db.get(Newspaper, newspaper_id)
     if not item or not item.is_published:
         raise HTTPException(404, "Jornal não encontrado.")
-    return purchase_newspaper(db, item, user, data.name, str(data.email) if data.email else None)
+    if user is None and not data.msisdn:
+        raise HTTPException(422, "Indique o número M-Pesa para continuar sem conta.")
+    purchase = purchase_newspaper(db, item, user, data.name, str(data.email) if data.email else None)
+    if data.msisdn and purchase.status != "paid" and not purchase.provider_reference:
+        purchase.provider_reference = create_payment(data.msisdn, purchase.amount, f"Jornal O Destaque: {item.title}")
+        purchase.status = "pending"
+        db.commit(); db.refresh(purchase)
+    return purchase
 
 
 @router.post("/purchases/{purchase_id}/pay", response_model=PurchaseOut)
