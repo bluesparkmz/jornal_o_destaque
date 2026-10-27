@@ -19,10 +19,13 @@ def create_database_schema() -> None:
                 "ADD COLUMN IF NOT EXISTS views_count INTEGER NOT NULL DEFAULT 0"
             )
         )
+        connection.execute(text("ALTER TABLE newspaper_purchases ALTER COLUMN user_id DROP NOT NULL"))
+        connection.execute(text("ALTER TABLE newspaper_purchases ADD COLUMN IF NOT EXISTS guest_name VARCHAR(255)"))
+        connection.execute(text("ALTER TABLE newspaper_purchases ADD COLUMN IF NOT EXISTS guest_email VARCHAR(255)"))
+        connection.execute(text("ALTER TABLE newspaper_purchases ADD COLUMN IF NOT EXISTS checkout_token VARCHAR(128) UNIQUE"))
 
 def get_db():
     session = SessionLocal()
     try: yield session
     finally: session.close()
-
 

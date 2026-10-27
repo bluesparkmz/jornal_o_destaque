@@ -5,6 +5,12 @@ from database import get_db
 from models import User
 from security import read_token
 bearer=HTTPBearer(auto_error=False)
+def optional_user(credentials:HTTPAuthorizationCredentials|None=Depends(bearer),db:Session=Depends(get_db)):
+    if not credentials: return None
+    try: user_id=read_token(credentials.credentials,"access")
+    except HTTPException: return None
+    user=db.get(User,user_id)
+    return user if user and user.is_active else None
 def current_user(credentials:HTTPAuthorizationCredentials|None=Depends(bearer),db:Session=Depends(get_db)):
     if not credentials: raise HTTPException(status.HTTP_401_UNAUTHORIZED,"Autenticação necessária")
     user=db.get(User,read_token(credentials.credentials,"access"))

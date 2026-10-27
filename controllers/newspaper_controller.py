@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 import re
 import unicodedata
 from uuid import uuid4
+import secrets
 
 from fastapi import HTTPException, UploadFile
 from sqlalchemy import select
@@ -52,7 +53,12 @@ def create_newspaper(db: Session, newspaper: Newspaper) -> Newspaper:
     return newspaper
 
 
-def purchase_newspaper(db: Session, newspaper: Newspaper, user: User) -> NewspaperPurchase:
+def purchase_newspaper(db: Session, newspaper: Newspaper, user: User | None, guest_name: str | None = None, guest_email: str | None = None) -> NewspaperPurchase:
+    if user is None and not guest_email:
+        raise HTTPException(422, "Indique o nome e e-mail para continuar sem conta.")
+    if user is None:
+        purchase = NewspaperPurchase(newspaper_id=newspaper.id, user_id=None, guest_name=guest_name, guest_email=guest_email, checkout_token=secrets.token_urlsafe(32), amount=newspaper.price, currency=newspaper.currency, status="paid" if newspaper.price == 0 else "pending", paid_at=datetime.now(timezone.utc) if newspaper.price == 0 else None)
+        db.add(purchase); db.commit(); db.refresh(purchase); return purchase
     previous = db.scalar(
         select(NewspaperPurchase).where(
             NewspaperPurchase.newspaper_id == newspaper.id,
@@ -60,11 +66,15 @@ def purchase_newspaper(db: Session, newspaper: Newspaper, user: User) -> Newspap
         )
     )
     if previous:
+        if not previous.checkout_token:
+            previous.checkout_token = secrets.token_urlsafe(32)
+            db.commit(); db.refresh(previous)
         return previous
 
     purchase = NewspaperPurchase(
         newspaper_id=newspaper.id,
         user_id=user.id,
+        checkout_token=secrets.token_urlsafe(32),
         amount=newspaper.price,
         currency=newspaper.currency,
         status="paid" if newspaper.price == 0 else "pending",
@@ -74,6 +84,10 @@ def purchase_newspaper(db: Session, newspaper: Newspaper, user: User) -> Newspap
     db.commit()
     db.refresh(purchase)
     return purchase
+
+
+def purchase_allowed(purchase: NewspaperPurchase, user: User | None, checkout_token: str | None) -> bool:
+    return bool((user and (user.role == "admin" or purchase.user_id == user.id)) or (checkout_token and secrets.compare_digest(purchase.checkout_token or "", checkout_token)))
 
 
 def update_purchase_status(purchase: NewspaperPurchase, provider_status: str) -> None:

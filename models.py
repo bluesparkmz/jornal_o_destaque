@@ -574,7 +574,10 @@ class NewspaperPurchase(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     newspaper_id: Mapped[int] = mapped_column(ForeignKey("newspapers.id", ondelete="CASCADE"), nullable=False, index=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
+    guest_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    guest_email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, index=True)
+    checkout_token: Mapped[Optional[str]] = mapped_column(String(128), unique=True, nullable=True, index=True)
     # Coluna antiga mantida para compatibilidade; o valor é MZN inteiro.
     amount: Mapped[int] = mapped_column("amount_cents", Integer, nullable=False)
     currency: Mapped[str] = mapped_column(String(3), nullable=False)

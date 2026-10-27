@@ -72,8 +72,12 @@ class NewspaperDirectIn(BaseModel):
     is_published: bool = False
     pdf_key: str = Field(min_length=1, max_length=500)
 class PurchaseOut(BaseModel):
-    id: int; newspaper_id: int; amount: int; currency: str; status: str
+    id: int; newspaper_id: int; amount: int; currency: str; status: str; checkout_token: str | None = None
     created_at: datetime; paid_at: datetime | None
     model_config = ConfigDict(from_attributes=True)
 class PaymentRequestIn(BaseModel):
     msisdn: str = Field(min_length=9, max_length=20, pattern=r"^[0-9+]+$")
+    checkout_token: str | None = Field(default=None, min_length=20, max_length=128)
+class CheckoutIn(BaseModel):
+    name: str | None = Field(default=None, max_length=255)
+    email: EmailStr | None = None

@@ -11,6 +11,7 @@ from controllers.newspaper_controller import (
     create_newspaper,
     list_user_purchases,
     purchase_newspaper,
+    purchase_allowed,
     save_pdf,
     update_purchase_status,
 )
@@ -19,8 +20,8 @@ from controllers.storage_controller import create_private_pdf_upload, download_p
 from controllers.skywallet_controller import create_payment, payment_status
 from database import get_db
 from models import Newspaper, NewspaperPurchase, User
-from routers.dependencies import allow, current_user
-from schemas import DirectPdfUploadOut, NewspaperDirectIn, NewspaperOut, PaymentRequestIn, PurchaseOut
+from routers.dependencies import allow, current_user, optional_user
+from schemas import CheckoutIn, DirectPdfUploadOut, NewspaperDirectIn, NewspaperOut, PaymentRequestIn, PurchaseOut
 
 router = APIRouter(prefix="/newspapers", tags=["Jornais digitais"])
 
@@ -103,11 +104,11 @@ def create_uploaded_newspaper(
 
 
 @router.post("/{newspaper_id}/purchase", response_model=PurchaseOut, status_code=201)
-def purchase(newspaper_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)):
+def purchase(newspaper_id: int, data: CheckoutIn, db: Session = Depends(get_db), user: User | None = Depends(optional_user)):
     item = db.get(Newspaper, newspaper_id)
     if not item or not item.is_published:
         raise HTTPException(404, "Jornal não encontrado.")
-    return purchase_newspaper(db, item, user)
+    return purchase_newspaper(db, item, user, data.name, str(data.email) if data.email else None)
 
 
 @router.post("/purchases/{purchase_id}/pay", response_model=PurchaseOut)
@@ -115,10 +116,10 @@ def pay(
     purchase_id: int,
     data: PaymentRequestIn,
     db: Session = Depends(get_db),
-    user: User = Depends(current_user),
+    user: User | None = Depends(optional_user),
 ):
     purchase = db.get(NewspaperPurchase, purchase_id)
-    if not purchase or purchase.user_id != user.id:
+    if not purchase or not purchase_allowed(purchase, user, data.checkout_token):
         raise HTTPException(404, "Compra não encontrada.")
     if purchase.status == "paid":
         return purchase
@@ -137,17 +138,28 @@ def pay(
 @router.get("/purchases/{purchase_id}", response_model=PurchaseOut)
 def purchase_status(
     purchase_id: int,
+    token: str | None = None,
     db: Session = Depends(get_db),
-    user: User = Depends(current_user),
+    user: User | None = Depends(optional_user),
 ):
     purchase = db.get(NewspaperPurchase, purchase_id)
-    if not purchase or purchase.user_id != user.id:
+    if not purchase or not purchase_allowed(purchase, user, token):
         raise HTTPException(404, "Compra não encontrada.")
     if purchase.status == "pending" and purchase.provider_reference:
         update_purchase_status(purchase, payment_status(purchase.provider_reference))
         db.commit()
         db.refresh(purchase)
     return purchase
+
+
+@router.get("/purchases/{purchase_id}/download")
+def guest_download(purchase_id: int, token: str | None = None, db: Session = Depends(get_db), user: User | None = Depends(optional_user)):
+    purchase = db.get(NewspaperPurchase, purchase_id)
+    if not purchase or not purchase_allowed(purchase, user, token) or purchase.status != "paid":
+        raise HTTPException(403, "A compra ainda não permite o descarregamento.")
+    item = db.get(Newspaper, purchase.newspaper_id)
+    object_data = download_private(item.pdf_path)
+    return StreamingResponse(object_data["Body"].iter_chunks(), media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{item.slug}.pdf"'})
 
 
 @router.get("/{newspaper_id}/download")
