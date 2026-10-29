@@ -32,9 +32,34 @@ def get_article(db:Session,article_id:int,public=True)->Article:
     article=db.scalar(query)
     if not article: raise HTTPException(status.HTTP_404_NOT_FOUND,"Notícia não encontrada")
     return article
+ACCENT_FROM = "áàâãäÁÀÂÃÄéèêëÉÈÊËíìîïÍÌÎÏóòôõöÓÒÔÕÖúùûüÚÙÛÜçÇñÑ"
+ACCENT_TO = "aaaaaAAAAAeeeeEEEEiiiiIIIIoooooOOOOOuuuuUUUUcCnN"
+
+def fold_search(value: str) -> str:
+    folded = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode().lower().strip()
+    return folded or value.lower()
+
+def like_pattern(value: str) -> str:
+    escaped = value.replace("\\", "\\\\").replace("%", r"\%").replace("_", r"\_")
+    return f"%{escaped}%"
+
+def unaccented(column):
+    return func.lower(func.translate(func.coalesce(column, ""), ACCENT_FROM, ACCENT_TO))
+
 def list_articles(db:Session,page:int,per_page:int,q:str|None=None,category:str|None=None,tag:str|None=None,author_id:int|None=None,sort:str="published_at",order:str="desc"):
     stmt=query_public()
-    if q: stmt=stmt.where(or_(Article.title.ilike(f"%{q}%"),Article.excerpt.ilike(f"%{q}%"),Article.content.ilike(f"%{q}%")))
+    if q:
+        pattern = like_pattern(fold_search(q))
+        raw = f"%{q}%"
+        stmt=stmt.where(or_(
+            unaccented(Article.title).like(pattern, escape="\\"),
+            unaccented(Article.excerpt).like(pattern, escape="\\"),
+            unaccented(Article.content).like(pattern, escape="\\"),
+            Article.slug.ilike(pattern, escape="\\"),
+            Article.title.ilike(raw),
+            Article.excerpt.ilike(raw),
+            Article.content.ilike(raw),
+        ))
     if category: stmt=stmt.join(Article.categories).where(Category.slug==category)
     if tag: stmt=stmt.join(Article.tags).where(Tag.slug==tag)
     if author_id: stmt=stmt.where(Article.author_id==author_id)

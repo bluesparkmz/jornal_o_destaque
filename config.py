@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_minutes: int = Field(default=30, ge=5, le=1440)
     refresh_token_days: int = Field(default=14, ge=1, le=90)
-    cors_origins: str = "http://localhost:3000,http://192.168.1.167:3000"
+    cors_origins: str = "http://localhost:3000,http://192.168.1.167:3000,https://odestaque.vercel.app"
     upload_dir: Path = Path("uploads")
     # Aceita o original maior; imagens são convertidas para WebP antes de ir ao R2.
     max_upload_bytes: int = Field(default=25_000_000, ge=1, le=100_000_000)
